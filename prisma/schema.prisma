@@ -1,0 +1,46 @@
+generator client {
+  provider        = "prisma-client-js"
+  // Nécessaire pour utiliser le driver adapter libSQL (connexion à Turso
+  // en environnement serverless — Vercel). En local, l'adapter n'est
+  // utilisé que si TURSO_DATABASE_URL est défini (voir src/lib/db.ts) ;
+  // sinon Prisma se connecte directement au fichier SQLite local.
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "sqlite"
+  // Utilisé par `prisma migrate` en local (fichier SQLite classique).
+  // La connexion Turso en production passe par le driver adapter dans
+  // src/lib/db.ts, pas par cette URL.
+  url      = env("DATABASE_URL")
+}
+
+// Comptes des AAF autorisés. Le mot de passe n'est jamais stocké en
+// clair : seul son hash bcrypt est conservé (voir prisma/seed.ts et
+// src/lib/users.ts).
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  mustChangePassword Boolean @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// Plusieurs réservations sont possibles le même jour, tant que leurs
+// créneaux horaires ne se chevauchent pas (vérifié en base + au niveau
+// applicatif dans src/lib/reservations.ts).
+model Reservation {
+  id             String   @id @default(cuid())
+  requesterEmail String
+  requesterName  String
+  title          String
+  date           DateTime // SQLite n'a pas de type DATE natif : Prisma stocke en ISO8601 (TEXT)
+  startTime      String // format "HH:MM"
+  endTime        String // format "HH:MM"
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([date])
+  @@index([requesterEmail])
+}

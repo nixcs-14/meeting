@@ -1,0 +1,42 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* -------- FullCalendar, thème Microsoft Bookings -------- */
+.fc {
+  font-family: inherit;
+}
+.fc .fc-toolbar-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #201f1e;
+}
+.fc .fc-button-primary {
+  background-color: #0078d4;
+  border-color: #0078d4;
+}
+.fc .fc-button-primary:hover {
+  background-color: #005a9e;
+  border-color: #005a9e;
+}
+.fc .fc-button-primary:disabled {
+  background-color: #a6c9e4;
+  border-color: #a6c9e4;
+}
+.fc-event {
+  border: none;
+  border-radius: 6px;
+  background-color: #0078d4;
+  cursor: pointer;
+}
+.fc-daygrid-event-dot {
+  border-color: #0078d4;
+}
+.fc-toolbar {
+  flex-wrap: wrap;
+  row-gap: 8px;
+}
+.fc-theme-standard td,
+.fc-theme-standard th {
+  border-color: #e1dfdd;
+}
