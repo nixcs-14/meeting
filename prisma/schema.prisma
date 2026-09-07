@@ -1,0 +1,26 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Plusieurs réservations sont possibles le même jour, tant que leurs
+// créneaux horaires ne se chevauchent pas (vérifié en base + au niveau
+// applicatif dans src/lib/reservations.ts).
+model Reservation {
+  id             String   @id @default(cuid())
+  requesterEmail String
+  requesterName  String
+  title          String
+  date           DateTime // SQLite n'a pas de type DATE natif : Prisma stocke en ISO8601 (TEXT)
+  startTime      String // format "HH:MM"
+  endTime        String // format "HH:MM"
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([date])
+  @@index([requesterEmail])
+}
