@@ -29,7 +29,9 @@ export default function NegotiationModal({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Si reservation est null, ne pas afficher le modal
   if (!reservation) return null;
+  const reservationId = reservation.id;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -47,7 +49,7 @@ export default function NegotiationModal({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          reservationId: reservation.id,
+          reservationId,
           proposedDate,
           proposedStartTime,
           proposedEndTime,

@@ -12,7 +12,8 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
     "prisma:seed": "tsx prisma/seed.ts",
-     "migrate:turso": "tsx scripts/migrate-turso.ts",
+    "migrate:turso": "tsx scripts/migrate-turso.ts",
+     "prisma:seed:turso": "tsx prisma/seed-turso.ts",
     "vercel-build": "prisma generate && prisma migrate deploy && next build"
   },
   "prisma": {
@@ -30,6 +31,7 @@
     "@radix-ui/react-dialog": "^1.1.23",
     "@types/nodemailer": "^8.0.1",
     "bcryptjs": "^2.4.3",
+    "dotenv": "^17.4.2",
     "jose": "^5.9.6",
     "lucide-react": "^1.42.0",
     "next": "14.2.15",
