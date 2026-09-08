@@ -1,5 +1,4 @@
 import { prisma } from "./db";
-import { notifyCreator, inviteParticipants } from "./email";
 
 export class ReservationError extends Error {
   code:
@@ -38,7 +37,7 @@ export type CreateReservationInput = {
   date: string;
   startTime: string;
   endTime: string;
-  participants?: string[]; // Non stocké en base, uniquement pour les emails
+  participants?: string[];
 };
 
 type TxClient = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
@@ -88,7 +87,6 @@ async function hasTimeOverlapTx(
 export async function createReservation(input: CreateReservationInput) {
   const { requesterEmail, requesterName, title, date, startTime, endTime, participants } = input;
 
-  // Vérifier que la date n'est pas dans le passé
   if (isPastDate(date)) {
     throw new ReservationError("PAST_DATE", "Impossible de réserver une date passée.");
   }
@@ -129,32 +127,6 @@ export async function createReservation(input: CreateReservationInput) {
     });
   });
 
-  // Notifications
-  const participantsList = participants?.filter(p => p.trim()) || [];
-  const creatorEmail = requesterEmail;
-
-  // Inviter les participants
-  if (participantsList.length > 0) {
-    inviteParticipants(
-      creatorEmail,
-      participantsList,
-      title,
-      date,
-      startTime,
-      endTime
-    );
-  }
-
-  // Notifier le créateur
-  notifyCreator(
-    creatorEmail,
-    title,
-    date,
-    startTime,
-    endTime,
-    participantsList
-  );
-
   return reservation;
 }
 
@@ -169,7 +141,6 @@ export type UpdateReservationInput = {
 export async function updateReservation(input: UpdateReservationInput) {
   const { id, requesterEmail, title, startTime, endTime } = input;
 
-  // Vérifier que la date n'est pas dans le passé
   const existing = await prisma.reservation.findUnique({ where: { id } });
   if (existing && isPastDate(existing.date.toISOString().slice(0, 10))) {
     throw new ReservationError(
@@ -228,7 +199,6 @@ export async function deleteReservation(id: string, requesterEmail: string) {
     );
   }
 
-  // Vérifier que la date n'est pas dans le passé
   if (isPastDate(existing.date.toISOString().slice(0, 10))) {
     throw new ReservationError(
       "PAST_DATE",
@@ -239,6 +209,14 @@ export async function deleteReservation(id: string, requesterEmail: string) {
   await prisma.reservation.delete({ where: { id } });
 }
 
+// ✅ EXPORTER listReservations
 export async function listReservations() {
-  return prisma.reservation.findMany({ orderBy: { date: "asc" } });
+  try {
+    return await prisma.reservation.findMany({ 
+      orderBy: { date: "asc" } 
+    });
+  } catch (error) {
+    console.error("Erreur listReservations:", error);
+    throw error;
+  }
 }
