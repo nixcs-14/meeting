@@ -1,4 +1,4 @@
-import { createClient } from "@libsql/client";
+import { createClient, type Client } from "@libsql/client";
 import { readFileSync } from "node:fs";
 
 // Charger le fichier .env
@@ -14,6 +14,42 @@ try {
   }
 } catch {
   // Les variables peuvent être fournies directement par l'environnement.
+}
+
+// Définition déclarative des colonnes attendues par table.
+// Ajouter une ligne ici suffit pour que la prochaine exécution du script
+// applique automatiquement la colonne manquante sur Turso.
+type ColumnDef = {
+  name: string;
+  // Clause SQL complète pour ADD COLUMN, ex: `TEXT NOT NULL DEFAULT ''`
+  ddl: string;
+};
+
+const EXPECTED_COLUMNS: Record<string, ColumnDef[]> = {
+  User: [
+    { name: "passwordHash", ddl: `TEXT NOT NULL DEFAULT ''` },
+    { name: "mustChangePassword", ddl: `BOOLEAN NOT NULL DEFAULT 1` },
+  ],
+  // Ajouter ici les futures colonnes pour Reservation / Negotiation
+  // au fur et à mesure de l'évolution du schema.prisma
+};
+
+async function getExistingColumns(client: Client, table: string): Promise<Set<string>> {
+  const result = await client.execute(`PRAGMA table_info("${table}")`);
+  return new Set(result.rows.map((row) => String(row.name)));
+}
+
+async function syncColumns(client: Client, table: string, expected: ColumnDef[]) {
+  const existing = await getExistingColumns(client, table);
+  for (const col of expected) {
+    if (existing.has(col.name)) {
+      console.log(`   ⏭️  ${table}.${col.name} déjà présente`);
+      continue;
+    }
+    console.log(`   ➕ Ajout de ${table}.${col.name}...`);
+    await client.execute(`ALTER TABLE "${table}" ADD COLUMN "${col.name}" ${col.ddl}`);
+    console.log(`   ✅ ${table}.${col.name} ajoutée`);
+  }
 }
 
 async function migrateTurso() {
@@ -37,19 +73,19 @@ async function migrateTurso() {
   try {
     const client = createClient({ url: tursoUrl, authToken: tursoToken });
 
-    console.log("📦 Création des tables...");
+    console.log("📦 Création des tables (si absentes)...");
 
     await client.execute(`
       CREATE TABLE IF NOT EXISTS "User" (
         "id" TEXT NOT NULL PRIMARY KEY,
         "email" TEXT NOT NULL UNIQUE,
-        "passwordHash" TEXT NOT NULL,
+        "passwordHash" TEXT NOT NULL DEFAULT '',
         "mustChangePassword" BOOLEAN NOT NULL DEFAULT 1,
         "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
       )
     `);
-    console.log("✅ Table User créée");
+    console.log("✅ Table User OK");
 
     await client.execute(`
       CREATE TABLE IF NOT EXISTS "Reservation" (
@@ -64,7 +100,7 @@ async function migrateTurso() {
         "updatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
       )
     `);
-    console.log("✅ Table Reservation créée");
+    console.log("✅ Table Reservation OK");
 
     await client.execute(`
       CREATE TABLE IF NOT EXISTS "Negotiation" (
@@ -82,7 +118,7 @@ async function migrateTurso() {
         FOREIGN KEY ("reservationId") REFERENCES "Reservation"("id") ON DELETE CASCADE
       )
     `);
-    console.log("✅ Table Negotiation créée");
+    console.log("✅ Table Negotiation OK");
 
     // Créer les index
     await client.execute(`CREATE INDEX IF NOT EXISTS "Reservation_date_idx" ON "Reservation"("date")`);
@@ -90,7 +126,16 @@ async function migrateTurso() {
     await client.execute(`CREATE INDEX IF NOT EXISTS "User_email_key" ON "User"("email")`);
     await client.execute(`CREATE INDEX IF NOT EXISTS "Negotiation_reservationId_idx" ON "Negotiation"("reservationId")`);
     await client.execute(`CREATE INDEX IF NOT EXISTS "Negotiation_status_idx" ON "Negotiation"("status")`);
-    console.log("✅ Index créés");
+    console.log("✅ Index OK");
+
+    // Étape clé : synchroniser les colonnes qui auraient pu manquer sur
+    // une table créée AVANT une évolution du schema (cas typique : ajout
+    // de passwordHash / mustChangePassword après coup).
+    console.log("🔄 Synchronisation des colonnes...");
+    for (const [table, columns] of Object.entries(EXPECTED_COLUMNS)) {
+      console.log(`   📋 Table ${table}:`);
+      await syncColumns(client, table, columns);
+    }
 
     console.log("✅ Migration Turso terminée avec succès !");
   } catch (error) {
