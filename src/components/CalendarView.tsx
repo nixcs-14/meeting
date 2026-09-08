@@ -11,7 +11,7 @@ export type CalendarReservation = {
   id: string;
   title: string;
   requesterName: string;
-  requesterEmail: string; // AJOUTER cette propriété
+  requesterEmail: string; // ✅ Ajout de cette propriété
   date: string;
   startTime: string;
   endTime: string;
@@ -31,7 +31,7 @@ export default function CalendarView({
     end: `${r.date}T${r.endTime}:00`,
     extendedProps: {
       requesterName: r.requesterName,
-      requesterEmail: r.requesterEmail,
+      requesterEmail: r.requesterEmail, // ✅ Ajout
       date: r.date,
       startTime: r.startTime,
       endTime: r.endTime,

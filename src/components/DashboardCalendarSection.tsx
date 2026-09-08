@@ -16,6 +16,7 @@ export default function DashboardCalendarSection({
   const [isReservationModalOpen, setIsReservationModalOpen] = useState(false);
   const [isNegotiationModalOpen, setIsNegotiationModalOpen] = useState(false);
   const [userEmail, setUserEmail] = useState<string>("");
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -27,6 +28,8 @@ export default function DashboardCalendarSection({
         }
       } catch (error) {
         console.error('Erreur récupération session:', error);
+      } finally {
+        setLoading(false);
       }
     };
     fetchUser();
@@ -82,10 +85,14 @@ export default function DashboardCalendarSection({
     }
   }
 
-  // Vérification sécurisée
+  // ✅ Vérification sécurisée du propriétaire
   const isOwner = selected && userEmail 
     ? selected.requesterEmail?.toLowerCase() === userEmail.toLowerCase()
     : false;
+
+  if (loading) {
+    return <div className="text-center py-8">Chargement...</div>;
+  }
 
   return (
     <div>
@@ -98,6 +105,7 @@ export default function DashboardCalendarSection({
         onEdit={isOwner ? handleEdit : undefined}
         onDelete={isOwner ? handleDelete : undefined}
         onNegotiate={!isOwner ? handleNegotiate : undefined}
+        isOwner={isOwner}
       />
 
       <NegotiationModal

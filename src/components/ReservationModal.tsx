@@ -10,6 +10,7 @@ interface ReservationModalProps {
   onEdit?: (id: string) => void;
   onDelete?: (id: string) => void;
   onNegotiate?: () => void;
+  isOwner?: boolean;
 }
 
 export default function ReservationModal({
@@ -19,8 +20,15 @@ export default function ReservationModal({
   onEdit,
   onDelete,
   onNegotiate,
+  isOwner = false,
 }: ReservationModalProps) {
-  if (!reservation) return null;
+  // ✅ Garde de type : si reservation est null, ne pas afficher
+  if (!reservation) {
+    return null;
+  }
+
+  // ✅ Maintenant TypeScript sait que reservation n'est pas null
+  const { id, title, date, startTime, endTime, requesterName, requesterEmail } = reservation;
 
   function calculerDuree(start: string, end: string): string {
     const [startH, startM] = start.split(":").map(Number);
@@ -38,6 +46,13 @@ export default function ReservationModal({
     return `${heures}h${minutes}`;
   }
 
+  // ✅ Vérification sécurisée de la date
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const reservationDate = new Date(date);
+  reservationDate.setHours(0, 0, 0, 0);
+  const isPast = reservationDate < today;
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-md rounded-lg bg-white p-6 shadow-xl">
@@ -51,7 +66,7 @@ export default function ReservationModal({
               Objet
             </div>
             <div className="mt-1 text-base font-medium text-ms-text">
-              {reservation.title}
+              {title}
             </div>
           </div>
 
@@ -60,7 +75,7 @@ export default function ReservationModal({
               Demandeur
             </div>
             <div className="mt-1 text-base text-ms-text">
-              {reservation.requesterName}
+              {requesterName}
             </div>
           </div>
 
@@ -69,7 +84,7 @@ export default function ReservationModal({
               Email
             </div>
             <div className="mt-1 text-base text-ms-text">
-              {reservation.requesterEmail}
+              {requesterEmail}
             </div>
           </div>
 
@@ -78,12 +93,15 @@ export default function ReservationModal({
               Date
             </div>
             <div className="mt-1 text-base text-ms-text">
-              {new Date(reservation.date).toLocaleDateString("fr-FR", {
+              {new Date(date).toLocaleDateString("fr-FR", {
                 weekday: "long",
                 year: "numeric",
                 month: "long",
                 day: "numeric",
               })}
+              {isPast && (
+                <span className="ml-2 text-xs text-ms-red">(Passée)</span>
+              )}
             </div>
           </div>
 
@@ -92,7 +110,7 @@ export default function ReservationModal({
               Horaire
             </div>
             <div className="mt-1 text-base text-ms-text">
-              {reservation.startTime} – {reservation.endTime}
+              {startTime} – {endTime}
             </div>
           </div>
 
@@ -101,7 +119,7 @@ export default function ReservationModal({
               Durée
             </div>
             <div className="mt-1 text-base text-ms-text">
-              {calculerDuree(reservation.startTime, reservation.endTime)}
+              {calculerDuree(startTime, endTime)}
             </div>
           </div>
         </div>
@@ -114,31 +132,40 @@ export default function ReservationModal({
             Fermer
           </button>
           
-          {onNegotiate && (
+          {isOwner && !isPast && (
+            <>
+              {onEdit && (
+                <button
+                  onClick={() => onEdit(id)}
+                  className="flex-1 rounded-md bg-ms-blue px-4 py-2 text-sm font-semibold text-white hover:bg-ms-blueDark transition-colors"
+                >
+                  ✏️ Modifier
+                </button>
+              )}
+              {onDelete && (
+                <button
+                  onClick={() => onDelete(id)}
+                  className="flex-1 rounded-md bg-ms-red px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 transition-colors"
+                >
+                  🗑️ Supprimer
+                </button>
+              )}
+            </>
+          )}
+
+          {!isOwner && !isPast && onNegotiate && (
             <button
               onClick={onNegotiate}
               className="flex-1 rounded-md bg-amber-500 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-600 transition-colors"
             >
-              🤝 Négocier
+              🤝 Proposer un créneau
             </button>
           )}
-          
-          {onEdit && (
-            <button
-              onClick={() => onEdit(reservation.id)}
-              className="flex-1 rounded-md bg-ms-blue px-4 py-2 text-sm font-semibold text-white hover:bg-ms-blueDark transition-colors"
-            >
-              ✏️ Modifier
-            </button>
-          )}
-          
-          {onDelete && (
-            <button
-              onClick={() => onDelete(reservation.id)}
-              className="flex-1 rounded-md bg-ms-red px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 transition-colors"
-            >
-              🗑️ Supprimer
-            </button>
+
+          {isPast && (
+            <p className="w-full text-center text-xs text-ms-muted">
+              ⚠️ Cette réservation est passée, vous ne pouvez plus la modifier.
+            </p>
           )}
         </div>
       </DialogContent>
