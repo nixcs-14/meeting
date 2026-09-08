@@ -12,6 +12,7 @@ datasource db {
   // Utilisé par `prisma migrate` en local (fichier SQLite classique).
   // La connexion Turso en production passe par le driver adapter dans
   // src/lib/db.ts, pas par cette URL.
+  url      = env("TURSO_DATABASE_URL")
 }
 
 // Comptes des AAF autorisés. Le mot de passe n'est jamais stocké en
