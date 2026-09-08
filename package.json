@@ -14,7 +14,7 @@
     "prisma:seed": "tsx prisma/seed.ts",
     "migrate:turso": "tsx scripts/migrate-turso.ts",
      "prisma:seed:turso": "tsx prisma/seed-turso.ts",
-    "vercel-build": "prisma generate && prisma migrate deploy && next build"
+    "vercel-build": "prisma generate && next build"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
