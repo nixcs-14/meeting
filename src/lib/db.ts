@@ -14,12 +14,17 @@ function createPrismaClient(): PrismaClient {
   // EN PRODUCTION ou si Turso est configuré
   if (tursoUrl && tursoToken) {
     console.log("🔗 Connexion à Turso");
-    const libsql = createClient({
-      url: tursoUrl,
-      authToken: tursoToken,
-    });
-    const adapter = new PrismaLibSQL(libsql);
-    return new PrismaClient({ adapter });
+    try {
+      const libsql = createClient({
+        url: tursoUrl,
+        authToken: tursoToken,
+      });
+      const adapter = new PrismaLibSQL(libsql);
+      return new PrismaClient({ adapter });
+    } catch (error) {
+      console.error("❌ Erreur connexion Turso:", error);
+      throw error;
+    }
   }
 
   // EN DÉVELOPPEMENT : SQLite local
