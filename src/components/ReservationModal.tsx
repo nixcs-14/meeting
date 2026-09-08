@@ -1,0 +1,147 @@
+"use client";
+
+import { Dialog, DialogContent, DialogTitle } from "./Dialog";
+import { CalendarReservation } from "./CalendarView";
+
+interface ReservationModalProps {
+  reservation: CalendarReservation | null;
+  isOpen: boolean;
+  onClose: () => void;
+  onEdit?: (id: string) => void;
+  onDelete?: (id: string) => void;
+  onNegotiate?: () => void;
+}
+
+export default function ReservationModal({
+  reservation,
+  isOpen,
+  onClose,
+  onEdit,
+  onDelete,
+  onNegotiate,
+}: ReservationModalProps) {
+  if (!reservation) return null;
+
+  function calculerDuree(start: string, end: string): string {
+    const [startH, startM] = start.split(":").map(Number);
+    const [endH, endM] = end.split(":").map(Number);
+    
+    let diffMinutes = (endH * 60 + endM) - (startH * 60 + startM);
+    
+    if (diffMinutes < 0) diffMinutes += 24 * 60;
+    
+    const heures = Math.floor(diffMinutes / 60);
+    const minutes = diffMinutes % 60;
+    
+    if (heures === 0) return `${minutes} min`;
+    if (minutes === 0) return `${heures}h`;
+    return `${heures}h${minutes}`;
+  }
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-md rounded-lg bg-white p-6 shadow-xl">
+        <DialogTitle className="text-xl font-bold text-ms-text mb-2">
+          📅 Détails de la réservation
+        </DialogTitle>
+
+        <div className="space-y-4 mt-4">
+          <div className="border-b border-ms-border pb-3">
+            <div className="text-xs font-semibold text-ms-muted uppercase tracking-wide">
+              Objet
+            </div>
+            <div className="mt-1 text-base font-medium text-ms-text">
+              {reservation.title}
+            </div>
+          </div>
+
+          <div className="border-b border-ms-border pb-3">
+            <div className="text-xs font-semibold text-ms-muted uppercase tracking-wide">
+              Demandeur
+            </div>
+            <div className="mt-1 text-base text-ms-text">
+              {reservation.requesterName}
+            </div>
+          </div>
+
+          <div className="border-b border-ms-border pb-3">
+            <div className="text-xs font-semibold text-ms-muted uppercase tracking-wide">
+              Email
+            </div>
+            <div className="mt-1 text-base text-ms-text">
+              {reservation.requesterEmail}
+            </div>
+          </div>
+
+          <div className="border-b border-ms-border pb-3">
+            <div className="text-xs font-semibold text-ms-muted uppercase tracking-wide">
+              Date
+            </div>
+            <div className="mt-1 text-base text-ms-text">
+              {new Date(reservation.date).toLocaleDateString("fr-FR", {
+                weekday: "long",
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              })}
+            </div>
+          </div>
+
+          <div className="border-b border-ms-border pb-3">
+            <div className="text-xs font-semibold text-ms-muted uppercase tracking-wide">
+              Horaire
+            </div>
+            <div className="mt-1 text-base text-ms-text">
+              {reservation.startTime} – {reservation.endTime}
+            </div>
+          </div>
+
+          <div>
+            <div className="text-xs font-semibold text-ms-muted uppercase tracking-wide">
+              Durée
+            </div>
+            <div className="mt-1 text-base text-ms-text">
+              {calculerDuree(reservation.startTime, reservation.endTime)}
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-6 flex flex-wrap gap-2 border-t border-ms-border pt-4">
+          <button
+            onClick={onClose}
+            className="flex-1 rounded-md border border-ms-border px-4 py-2 text-sm font-semibold text-ms-text hover:bg-ms-bg transition-colors"
+          >
+            Fermer
+          </button>
+          
+          {onNegotiate && (
+            <button
+              onClick={onNegotiate}
+              className="flex-1 rounded-md bg-amber-500 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-600 transition-colors"
+            >
+              🤝 Négocier
+            </button>
+          )}
+          
+          {onEdit && (
+            <button
+              onClick={() => onEdit(reservation.id)}
+              className="flex-1 rounded-md bg-ms-blue px-4 py-2 text-sm font-semibold text-white hover:bg-ms-blueDark transition-colors"
+            >
+              ✏️ Modifier
+            </button>
+          )}
+          
+          {onDelete && (
+            <button
+              onClick={() => onDelete(reservation.id)}
+              className="flex-1 rounded-md bg-ms-red px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 transition-colors"
+            >
+              🗑️ Supprimer
+            </button>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}

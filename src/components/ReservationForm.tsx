@@ -14,6 +14,7 @@ export default function ReservationForm() {
   const [date, setDate] = useState(todayStr);
   const [startTime, setStartTime] = useState(SLOTS[0]);
   const [endTime, setEndTime] = useState(SLOTS[SLOTS.length - 1]);
+  const [participants, setParticipants] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -36,12 +37,25 @@ export default function ReservationForm() {
       return;
     }
 
+    // Extraire les emails des participants
+    const participantsList = participants
+      .split(/[,;\s]+/)
+      .map(email => email.trim())
+      .filter(email => email && email.includes('@'));
+
     setSubmitting(true);
     try {
       const res = await fetch("/api/reservations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ requesterName, title, date, startTime, endTime }),
+        body: JSON.stringify({ 
+          requesterName, 
+          title, 
+          date, 
+          startTime, 
+          endTime,
+          participants: participantsList 
+        }),
       });
       const data = await res.json();
 
@@ -52,6 +66,7 @@ export default function ReservationForm() {
 
       setSuccess(true);
       setTitle("");
+      setParticipants("");
       router.refresh();
     } catch {
       setError("Impossible de contacter le serveur.");
@@ -71,6 +86,7 @@ export default function ReservationForm() {
             value={requesterName}
             onChange={(e) => setRequesterName(e.target.value)}
             className="w-full rounded-md border border-ms-border px-3 py-2 text-sm outline-none focus:border-ms-blue focus:ring-2 focus:ring-ms-blue/20"
+            required
           />
         </div>
         <div>
@@ -81,8 +97,24 @@ export default function ReservationForm() {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             className="w-full rounded-md border border-ms-border px-3 py-2 text-sm outline-none focus:border-ms-blue focus:ring-2 focus:ring-ms-blue/20"
+            required
           />
         </div>
+      </div>
+
+      <div>
+        <label className="mb-1 block text-xs font-semibold text-ms-muted">
+          Participants (emails séparés par des virgules ou espaces)
+        </label>
+        <input
+          value={participants}
+          onChange={(e) => setParticipants(e.target.value)}
+          placeholder="email1@undp.org, email2@undp.org"
+          className="w-full rounded-md border border-ms-border px-3 py-2 text-sm outline-none focus:border-ms-blue focus:ring-2 focus:ring-ms-blue/20"
+        />
+        <p className="mt-1 text-xs text-ms-muted">
+          Séparez les emails par des virgules, points-virgules ou espaces.
+        </p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
@@ -96,6 +128,7 @@ export default function ReservationForm() {
             value={date}
             onChange={(e) => setDate(e.target.value)}
             className="w-full rounded-md border border-ms-border px-3 py-2 text-sm outline-none focus:border-ms-blue focus:ring-2 focus:ring-ms-blue/20"
+            required
           />
         </div>
         <div>
@@ -139,7 +172,7 @@ export default function ReservationForm() {
       )}
       {success && (
         <p className="rounded-md bg-ms-greenBg px-3 py-2 text-sm text-ms-green">
-          ✅ Réservation confirmée
+          ✅ Réservation confirmée ! Un email a été envoyé aux participants.
         </p>
       )}
 

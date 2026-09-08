@@ -11,9 +11,10 @@ export type CalendarReservation = {
   id: string;
   title: string;
   requesterName: string;
-  date: string; // YYYY-MM-DD
-  startTime: string; // HH:MM
-  endTime: string; // HH:MM
+  requesterEmail: string; // AJOUTER cette propriété
+  date: string;
+  startTime: string;
+  endTime: string;
 };
 
 export default function CalendarView({
@@ -28,6 +29,14 @@ export default function CalendarView({
     title: `${r.title} (${r.requesterName})`,
     start: `${r.date}T${r.startTime}:00`,
     end: `${r.date}T${r.endTime}:00`,
+    extendedProps: {
+      requesterName: r.requesterName,
+      requesterEmail: r.requesterEmail,
+      date: r.date,
+      startTime: r.startTime,
+      endTime: r.endTime,
+      title: r.title,
+    },
   }));
 
   return (
@@ -43,9 +52,22 @@ export default function CalendarView({
       slotMaxTime={`${DAY_END}:00`}
       height={620}
       events={events}
-      eventClick={(info) => onEventClick?.(info.event.id)}
+      eventClick={(info) => {
+        if (onEventClick) {
+          onEventClick(info.event.id);
+        }
+      }}
       locale={frLocale}
       buttonText={{ today: "Aujourd'hui" }}
+      eventTimeFormat={{
+        hour: "2-digit",
+        minute: "2-digit",
+        meridiem: false,
+        hour12: false,
+      }}
+      eventDisplay="block"
+      displayEventTime={true}
+      eventClassNames="cursor-pointer hover:opacity-80 transition-opacity"
     />
   );
 }

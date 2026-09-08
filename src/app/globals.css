@@ -40,3 +40,29 @@
 .fc-theme-standard th {
   border-color: #e1dfdd;
 }
+
+/* Animations pour le modal */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.animate-in {
+  animation: fadeIn 0.2s ease-out;
+}
+
+/* Styles pour les événements du calendrier */
+.fc-event {
+  cursor: pointer !important;
+  transition: opacity 0.2s;
+}
+
+.fc-event:hover {
+  opacity: 0.8 !important;
+}

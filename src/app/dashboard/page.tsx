@@ -16,6 +16,7 @@ export default async function DashboardPage() {
     id: r.id,
     title: r.title,
     requesterName: r.requesterName,
+    requesterEmail: r.requesterEmail, // AJOUTER cette propriété
     date: r.date.toISOString().slice(0, 10),
     startTime: r.startTime,
     endTime: r.endTime,

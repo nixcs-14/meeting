@@ -1,4 +1,5 @@
 import { prisma } from "./db";
+import { notifyCreator, inviteParticipants } from "./email";
 
 export class ReservationError extends Error {
   code:
@@ -15,7 +16,6 @@ export class ReservationError extends Error {
 }
 
 function toUtcDate(dateStr: string): Date {
-  // Stocke la date à minuit UTC pour éviter les décalages de fuseau horaire.
   return new Date(`${dateStr}T00:00:00.000Z`);
 }
 
@@ -35,14 +35,12 @@ export type CreateReservationInput = {
   requesterEmail: string;
   requesterName: string;
   title: string;
-  date: string; // "YYYY-MM-DD"
-  startTime: string; // "HH:MM"
-  endTime: string; // "HH:MM"
+  date: string;
+  startTime: string;
+  endTime: string;
+  participants?: string[]; // Non stocké en base, uniquement pour les emails
 };
 
-// Client de transaction Prisma (mêmes méthodes que `prisma`, mais lié à
-// la transaction en cours pour que les lectures et l'écriture voient un
-// état cohérent de la base).
 type TxClient = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
 
 async function hasConsecutiveDayConflictTx(
@@ -67,12 +65,6 @@ async function hasConsecutiveDayConflictTx(
   return existing.length > 0;
 }
 
-/**
- * Vérifie qu'aucune réservation existante sur cette date ne chevauche le
- * créneau demandé. Deux créneaux se chevauchent si start < autreFin ET
- * fin > autreDébut — la comparaison de chaînes "HH:MM" fonctionne
- * directement grâce au format à largeur fixe.
- */
 async function hasTimeOverlapTx(
   tx: TxClient,
   dateStr: string,
@@ -94,8 +86,9 @@ async function hasTimeOverlapTx(
 }
 
 export async function createReservation(input: CreateReservationInput) {
-  const { requesterEmail, requesterName, title, date, startTime, endTime } = input;
+  const { requesterEmail, requesterName, title, date, startTime, endTime, participants } = input;
 
+  // Vérifier que la date n'est pas dans le passé
   if (isPastDate(date)) {
     throw new ReservationError("PAST_DATE", "Impossible de réserver une date passée.");
   }
@@ -107,11 +100,7 @@ export async function createReservation(input: CreateReservationInput) {
     );
   }
 
-  // La vérification + l'insertion sont regroupées dans une transaction
-  // interactive : sur SQLite les écritures sont de toute façon
-  // sérialisées (un seul fichier, un writer à la fois), donc ceci
-  // élimine la fenêtre de course entre la vérification et l'insertion.
-  return prisma.$transaction(async (tx) => {
+  const reservation = await prisma.$transaction(async (tx) => {
     const consecutive = await hasConsecutiveDayConflictTx(tx, requesterEmail, date);
     if (consecutive) {
       throw new ReservationError(
@@ -128,7 +117,7 @@ export async function createReservation(input: CreateReservationInput) {
       );
     }
 
-    return tx.reservation.create({
+    return await tx.reservation.create({
       data: {
         requesterEmail: requesterEmail.toLowerCase(),
         requesterName,
@@ -139,11 +128,39 @@ export async function createReservation(input: CreateReservationInput) {
       },
     });
   });
+
+  // Notifications
+  const participantsList = participants?.filter(p => p.trim()) || [];
+  const creatorEmail = requesterEmail;
+
+  // Inviter les participants
+  if (participantsList.length > 0) {
+    inviteParticipants(
+      creatorEmail,
+      participantsList,
+      title,
+      date,
+      startTime,
+      endTime
+    );
+  }
+
+  // Notifier le créateur
+  notifyCreator(
+    creatorEmail,
+    title,
+    date,
+    startTime,
+    endTime,
+    participantsList
+  );
+
+  return reservation;
 }
 
 export type UpdateReservationInput = {
   id: string;
-  requesterEmail: string; // pour vérifier que la personne modifie bien sa propre résa
+  requesterEmail: string;
   title: string;
   startTime: string;
   endTime: string;
@@ -152,6 +169,15 @@ export type UpdateReservationInput = {
 export async function updateReservation(input: UpdateReservationInput) {
   const { id, requesterEmail, title, startTime, endTime } = input;
 
+  // Vérifier que la date n'est pas dans le passé
+  const existing = await prisma.reservation.findUnique({ where: { id } });
+  if (existing && isPastDate(existing.date.toISOString().slice(0, 10))) {
+    throw new ReservationError(
+      "PAST_DATE",
+      "Impossible de modifier une réservation passée."
+    );
+  }
+
   if (startTime >= endTime) {
     throw new ReservationError(
       "INVALID_RANGE",
@@ -159,7 +185,9 @@ export async function updateReservation(input: UpdateReservationInput) {
     );
   }
 
-  return prisma.$transaction(async (tx) => {
+  let reservationData: any;
+
+  await prisma.$transaction(async (tx) => {
     const existing = await tx.reservation.findUnique({ where: { id } });
     if (!existing) {
       throw new ReservationError("NOT_FOUND", "Réservation introuvable.");
@@ -181,11 +209,13 @@ export async function updateReservation(input: UpdateReservationInput) {
       );
     }
 
-    return tx.reservation.update({
+    reservationData = await tx.reservation.update({
       where: { id },
       data: { title, startTime, endTime },
     });
   });
+
+  return reservationData;
 }
 
 export async function deleteReservation(id: string, requesterEmail: string) {
@@ -197,6 +227,15 @@ export async function deleteReservation(id: string, requesterEmail: string) {
       "Vous ne pouvez supprimer que vos propres réservations."
     );
   }
+
+  // Vérifier que la date n'est pas dans le passé
+  if (isPastDate(existing.date.toISOString().slice(0, 10))) {
+    throw new ReservationError(
+      "PAST_DATE",
+      "Impossible de supprimer une réservation passée."
+    );
+  }
+
   await prisma.reservation.delete({ where: { id } });
 }
 

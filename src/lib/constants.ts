@@ -5,6 +5,7 @@ const DEFAULT_WHITELIST = [
   "sitraka.rasolohery@undp.org",
   "nekena.razafinjatovo@undp.org",
   "andrilalao.raminosoa@undp.org",
+  "ramahalefitra.abelson.nicolas@gmail.com"
 ];
 
 export function getWhitelist(): string[] {

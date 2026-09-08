@@ -28,6 +28,7 @@ const createSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date invalide"),
   startTime: z.string().regex(/^\d{2}:\d{2}$/, "Heure de début invalide"),
   endTime: z.string().regex(/^\d{2}:\d{2}$/, "Heure de fin invalide"),
+  participants: z.array(z.string().email()).optional(),
 });
 
 export async function POST(req: NextRequest) {

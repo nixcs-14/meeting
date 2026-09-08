@@ -19,12 +19,12 @@ datasource db {
 // clair : seul son hash bcrypt est conservé (voir prisma/seed.ts et
 // src/lib/users.ts).
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  passwordHash String
-  mustChangePassword Boolean @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id                 String   @id @default(cuid())
+  email              String   @unique
+  passwordHash       String
+  mustChangePassword Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 }
 
 // Plusieurs réservations sont possibles le même jour, tant que leurs
@@ -41,6 +41,31 @@ model Reservation {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
+  negotiations Negotiation[]
+
   @@index([date])
   @@index([requesterEmail])
+}
+
+model Negotiation {
+  id            String      @id @default(cuid())
+  reservationId String
+  reservation   Reservation @relation(fields: [reservationId], references: [id], onDelete: Cascade)
+
+  requesterEmail String
+  requesterName  String
+
+  proposedDate      DateTime
+  proposedStartTime String
+  proposedEndTime   String
+
+  message String?
+
+  status String @default("PENDING")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([reservationId])
+  @@index([status])
 }
