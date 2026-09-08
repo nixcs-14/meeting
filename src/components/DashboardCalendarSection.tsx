@@ -58,10 +58,6 @@ export default function DashboardCalendarSection({
     setIsNegotiationModalOpen(false);
   }
 
-  function handleNegotiationSuccess() {
-    router.refresh();
-  }
-
   function handleEdit(id: string) {
     setIsReservationModalOpen(false);
     router.push(`/reserve?edit=${id}`);
@@ -88,21 +84,10 @@ export default function DashboardCalendarSection({
     }
   }
 
-  // ✅ Vérification sécurisée du propriétaire avec logs
+  // ✅ Vérification du propriétaire
   const isOwner = selected && userEmail 
     ? selected.requesterEmail?.toLowerCase() === userEmail.toLowerCase()
     : false;
-
-  // ✅ Debug logs
-  if (selected) {
-    console.log("🔍 Réservation sélectionnée:", {
-      id: selected.id,
-      title: selected.title,
-      requesterEmail: selected.requesterEmail,
-      userEmail: userEmail,
-      isOwner: isOwner
-    });
-  }
 
   if (loading) {
     return <div className="text-center py-8">Chargement...</div>;
@@ -110,7 +95,11 @@ export default function DashboardCalendarSection({
 
   return (
     <div>
-      <CalendarView reservations={reservations} onEventClick={handleEventClick} />
+      <CalendarView 
+        reservations={reservations} 
+        onEventClick={handleEventClick}
+        userEmail={userEmail}
+      />
 
       <ReservationModal
         reservation={selected}
@@ -126,7 +115,6 @@ export default function DashboardCalendarSection({
         reservation={selected}
         isOpen={isNegotiationModalOpen}
         onClose={handleCloseNegotiationModal}
-        onSuccess={handleNegotiationSuccess}
       />
     </div>
   );

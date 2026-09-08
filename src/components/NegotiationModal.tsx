@@ -1,202 +1,184 @@
 "use client";
 
-import { useState } from "react";
 import { Dialog, DialogContent, DialogTitle } from "./Dialog";
 import { CalendarReservation } from "./CalendarView";
-import { generateSlots } from "@/lib/constants";
 
-const SLOTS = generateSlots();
-
-interface NegotiationModalProps {
+interface ReservationModalProps {
   reservation: CalendarReservation | null;
   isOpen: boolean;
   onClose: () => void;
-  onSuccess: () => void;
+  onEdit?: (id: string) => void;
+  onDelete?: (id: string) => void;
+  onNegotiate?: () => void;
+  isOwner?: boolean;
 }
 
-export default function NegotiationModal({
+export default function ReservationModal({
   reservation,
   isOpen,
   onClose,
-  onSuccess,
-}: NegotiationModalProps) {
-  const todayStr = new Date().toISOString().slice(0, 10);
-  const [proposedDate, setProposedDate] = useState(todayStr);
-  const [proposedStartTime, setProposedStartTime] = useState(SLOTS[0]);
-  const [proposedEndTime, setProposedEndTime] = useState(SLOTS[SLOTS.length - 1]);
-  const [message, setMessage] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // ✅ Garde de type : si reservation est null, ne pas afficher
+  onEdit,
+  onDelete,
+  onNegotiate,
+  isOwner = false,
+}: ReservationModalProps) {
   if (!reservation) {
     return null;
   }
 
-  // ✅ Maintenant TypeScript sait que reservation n'est pas null
-  // On peut utiliser reservation en toute sécurité
   const { id, title, date, startTime, endTime, requesterName, requesterEmail } = reservation;
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    setLoading(true);
-
-    // Validation : date non passée
-    if (proposedDate < todayStr) {
-      setError("Impossible de proposer une date passée.");
-      setLoading(false);
-      return;
-    }
-
-    // Validation : heure début < heure fin
-    if (proposedStartTime >= proposedEndTime) {
-      setError("L'heure de fin doit être après l'heure de début");
-      setLoading(false);
-      return;
-    }
-
-    // Validation : même jour
-    if (proposedDate === date && 
-        proposedStartTime === startTime && 
-        proposedEndTime === endTime) {
-      setError("Le créneau proposé est identique à l'original.");
-      setLoading(false);
-      return;
-    }
-
-    try {
-      const res = await fetch("/api/negotiations", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          reservationId: id,
-          proposedDate,
-          proposedStartTime,
-          proposedEndTime,
-          message,
-        }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        setError(data.error || "Erreur lors de la demande");
-        return;
-      }
-
-      onSuccess();
-      onClose();
-    } catch {
-      setError("Erreur de connexion");
-    } finally {
-      setLoading(false);
-    }
+  function calculerDuree(start: string, end: string): string {
+    const [startH, startM] = start.split(":").map(Number);
+    const [endH, endM] = end.split(":").map(Number);
+    
+    let diffMinutes = (endH * 60 + endM) - (startH * 60 + startM);
+    
+    if (diffMinutes < 0) diffMinutes += 24 * 60;
+    
+    const heures = Math.floor(diffMinutes / 60);
+    const minutes = diffMinutes % 60;
+    
+    if (heures === 0) return `${minutes} min`;
+    if (minutes === 0) return `${heures}h`;
+    return `${heures}h${minutes}`;
   }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const reservationDate = new Date(date);
+  reservationDate.setHours(0, 0, 0, 0);
+  const isPast = reservationDate < today;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-md rounded-lg bg-white p-6 shadow-xl">
         <DialogTitle className="text-xl font-bold text-ms-text mb-2">
-          🤝 Proposer un créneau alternatif
+          📅 Détails de la réservation
         </DialogTitle>
 
-        <p className="text-sm text-ms-muted mb-4">
-          Vous souhaitez proposer un nouveau créneau pour la réservation 
-          <br />
-          <span className="font-semibold text-ms-text">"{title}"</span>
-          <br />
-          du {new Date(date).toLocaleDateString('fr-FR')}
-        </p>
+        <div className="space-y-4 mt-4">
+          <div className="border-b border-ms-border pb-3">
+            <div className="text-xs font-semibold text-ms-muted uppercase tracking-wide">
+              Objet
+            </div>
+            <div className="mt-1 text-base font-medium text-ms-text">
+              {title}
+            </div>
+          </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="border-b border-ms-border pb-3">
+            <div className="text-xs font-semibold text-ms-muted uppercase tracking-wide">
+              Demandeur
+            </div>
+            <div className="mt-1 text-base text-ms-text">
+              {requesterName}
+            </div>
+          </div>
+
+          <div className="border-b border-ms-border pb-3">
+            <div className="text-xs font-semibold text-ms-muted uppercase tracking-wide">
+              Email
+            </div>
+            <div className="mt-1 text-base text-ms-text">
+              {requesterEmail}
+            </div>
+          </div>
+
+          <div className="border-b border-ms-border pb-3">
+            <div className="text-xs font-semibold text-ms-muted uppercase tracking-wide">
+              Date
+            </div>
+            <div className="mt-1 text-base text-ms-text">
+              {new Date(date).toLocaleDateString("fr-FR", {
+                weekday: "long",
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              })}
+              {isPast && (
+                <span className="ml-2 inline-block rounded bg-ms-redBg px-2 py-0.5 text-xs text-ms-red">
+                  ⚠️ Passée
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div className="border-b border-ms-border pb-3">
+            <div className="text-xs font-semibold text-ms-muted uppercase tracking-wide">
+              Horaire
+            </div>
+            <div className="mt-1 text-base text-ms-text">
+              {startTime} – {endTime}
+            </div>
+          </div>
+
           <div>
-            <label className="block text-xs font-semibold text-ms-muted mb-1">
-              📅 Date proposée
-            </label>
-            <input
-              type="date"
-              min={todayStr}
-              value={proposedDate}
-              onChange={(e) => setProposedDate(e.target.value)}
-              className="w-full rounded-md border border-ms-border px-3 py-2 text-sm outline-none focus:border-ms-blue focus:ring-2 focus:ring-ms-blue/20"
-              required
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-semibold text-ms-muted mb-1">
-                🕐 Heure début
-              </label>
-              <select
-                value={proposedStartTime}
-                onChange={(e) => setProposedStartTime(e.target.value)}
-                className="w-full rounded-md border border-ms-border px-3 py-2 text-sm outline-none focus:border-ms-blue focus:ring-2 focus:ring-ms-blue/20"
-              >
-                {SLOTS.map((s) => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
-              </select>
+            <div className="text-xs font-semibold text-ms-muted uppercase tracking-wide">
+              Durée
             </div>
-            <div>
-              <label className="block text-xs font-semibold text-ms-muted mb-1">
-                🕐 Heure fin
-              </label>
-              <select
-                value={proposedEndTime}
-                onChange={(e) => setProposedEndTime(e.target.value)}
-                className="w-full rounded-md border border-ms-border px-3 py-2 text-sm outline-none focus:border-ms-blue focus:ring-2 focus:ring-ms-blue/20"
-              >
-                {SLOTS.map((s) => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
-              </select>
+            <div className="mt-1 text-base text-ms-text">
+              {calculerDuree(startTime, endTime)}
             </div>
           </div>
 
-          <div>
-            <label className="block text-xs font-semibold text-ms-muted mb-1">
-              💬 Message pour le propriétaire
-            </label>
-            <textarea
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              placeholder="Expliquez pourquoi vous souhaitez modifier ce créneau..."
-              className="w-full rounded-md border border-ms-border px-3 py-2 text-sm outline-none focus:border-ms-blue focus:ring-2 focus:ring-ms-blue/20 resize-none"
-              rows={3}
-            />
+          {/* ✅ Badge propriétaire */}
+          <div className="border-t border-ms-border pt-2">
+            {isOwner ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-3 py-1 text-xs font-semibold text-green-700">
+                🟢 Vous êtes le propriétaire
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700">
+                🔵 Réservation d'un autre
+              </span>
+            )}
           </div>
+        </div>
 
-          {error && (
-            <div className="rounded-md bg-ms-redBg px-3 py-2 text-sm text-ms-red">
-              {error}
-            </div>
+        <div className="mt-6 flex flex-wrap gap-2 border-t border-ms-border pt-4">
+          <button
+            onClick={onClose}
+            className="flex-1 rounded-md border border-ms-border px-4 py-2 text-sm font-semibold text-ms-text hover:bg-ms-bg transition-colors"
+          >
+            Fermer
+          </button>
+          
+          {isOwner && !isPast && (
+            <>
+              {onEdit && (
+                <button
+                  onClick={() => onEdit(id)}
+                  className="flex-1 rounded-md bg-ms-blue px-4 py-2 text-sm font-semibold text-white hover:bg-ms-blueDark transition-colors"
+                >
+                  ✏️ Modifier
+                </button>
+              )}
+              {onDelete && (
+                <button
+                  onClick={() => onDelete(id)}
+                  className="flex-1 rounded-md bg-ms-red px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 transition-colors"
+                >
+                  🗑️ Supprimer
+                </button>
+              )}
+            </>
           )}
 
-          <div className="flex gap-2 pt-2">
+          {!isOwner && !isPast && onNegotiate && (
             <button
-              type="button"
-              onClick={onClose}
-              className="flex-1 rounded-md border border-ms-border px-4 py-2 text-sm font-semibold text-ms-text hover:bg-ms-bg transition-colors"
-              disabled={loading}
+              onClick={onNegotiate}
+              className="flex-1 rounded-md bg-amber-500 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-600 transition-colors"
             >
-              Annuler
+              🤝 Proposer un créneau
             </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="flex-1 rounded-md bg-amber-500 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-600 transition-colors disabled:opacity-60"
-            >
-              {loading ? "Envoi..." : "📤 Proposer"}
-            </button>
-          </div>
-        </form>
+          )}
 
-        <div className="mt-4 pt-4 border-t border-ms-border">
-          <p className="text-xs text-ms-muted">
-            💡 Le propriétaire recevra votre proposition par email et pourra l'accepter ou la refuser.
-          </p>
+          {isPast && (
+            <p className="w-full text-center text-sm text-ms-muted">
+              ⚠️ Cette réservation est passée
+            </p>
+          )}
         </div>
       </DialogContent>
     </Dialog>

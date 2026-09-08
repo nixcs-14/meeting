@@ -5,15 +5,20 @@ import Header from "@/components/Header";
 import RoomHero from "@/components/RoomHero";
 import StatCard from "@/components/StatCard";
 import DashboardCalendarSection from "@/components/DashboardCalendarSection";
+import MyReservationsList from "@/components/MyReservationsList";
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: { show?: string };
+}) {
   const session = await getSession();
   if (!session) {
-    // Rediriger vers login
     return null;
   }
   
   const email = session.email;
+  const showMyReservations = searchParams.show === "my";
 
   const reservations = await listReservations();
 
@@ -26,9 +31,6 @@ export default async function DashboardPage() {
     startTime: r.startTime,
     endTime: r.endTime,
   }));
-
-  // Debug
-  console.log("📋 Réservations:", calendarData);
 
   const todayStr = new Date().toISOString().slice(0, 10);
   const todayCount = calendarData.filter((r) => r.date === todayStr).length;
@@ -49,6 +51,20 @@ export default async function DashboardPage() {
     .filter((r) => r.date.toISOString().slice(0, 10) >= todayStr)
     .sort((a, b) => a.date.getTime() - b.date.getTime())[0];
 
+  // ✅ Mes réservations (toutes, pas seulement à venir)
+  const myReservations = reservations
+    .filter((r) => r.requesterEmail.toLowerCase() === email.toLowerCase())
+    .sort((a, b) => a.date.getTime() - b.date.getTime())
+    .map((r) => ({
+      id: r.id,
+      title: r.title,
+      date: r.date.toISOString().slice(0, 10),
+      startTime: r.startTime,
+      endTime: r.endTime,
+      requesterName: r.requesterName,
+      requesterEmail: r.requesterEmail,
+    }));
+
   return (
     <main className="mx-auto max-w-6xl px-3 py-6 sm:px-6">
       <Header email={email} />
@@ -65,24 +81,50 @@ export default async function DashboardPage() {
         <StatCard label="Total à venir" value={upcoming.length} hint="au calendrier" />
       </div>
 
-      <div className="mb-6 flex justify-end">
+      {/* ✅ Boutons d'action */}
+      <div className="mb-6 flex flex-wrap gap-3">
         <Link
           href="/reserve"
-          className="rounded-md bg-ms-blue px-5 py-2.5 text-sm font-semibold text-white hover:bg-ms-blueDark"
+          className="rounded-md bg-ms-blue px-5 py-2.5 text-sm font-semibold text-white hover:bg-ms-blueDark transition-colors"
         >
           + Nouvelle réservation
         </Link>
+        
+        <Link
+          href={showMyReservations ? "/dashboard" : "/dashboard?show=my"}
+          className={`rounded-md px-5 py-2.5 text-sm font-semibold transition-colors ${
+            showMyReservations 
+              ? "bg-ms-blue text-white hover:bg-ms-blueDark" 
+              : "border border-ms-border text-ms-text hover:bg-ms-bg"
+          }`}
+        >
+          {showMyReservations ? "📅 Voir tout le calendrier" : "📋 Mes réservations"}
+        </Link>
       </div>
 
-      <div className="rounded-card border border-ms-border bg-white p-4 shadow-card sm:p-6">
-        <div className="mb-3 text-xs font-bold uppercase tracking-wide text-ms-muted">
-          Vue d&apos;ensemble
+      {/* ✅ Affichage conditionnel */}
+      {showMyReservations ? (
+        <div className="rounded-card border border-ms-border bg-white p-4 shadow-card sm:p-6">
+          <div className="mb-3 text-xs font-bold uppercase tracking-wide text-ms-muted">
+            Mes réservations
+          </div>
+          <h3 className="mb-4 text-base font-bold text-ms-text sm:text-lg">
+            📋 Liste de mes réservations
+          </h3>
+          <MyReservationsList reservations={myReservations} />
         </div>
-        <h3 className="mb-4 text-base font-bold text-ms-text sm:text-lg">
-          Calendrier des réservations
-        </h3>
-        <DashboardCalendarSection reservations={calendarData} />
-      </div>
+      ) : (
+        <div className="rounded-card border border-ms-border bg-white p-4 shadow-card sm:p-6">
+          <div className="mb-3 text-xs font-bold uppercase tracking-wide text-ms-muted">
+            Vue d&apos;ensemble
+          </div>
+          <h3 className="mb-4 text-base font-bold text-ms-text sm:text-lg">
+            Calendrier des réservations
+          </h3>
+          
+          <DashboardCalendarSection reservations={calendarData} />
+        </div>
+      )}
     </main>
   );
 }

@@ -129,10 +129,7 @@ export default function ReservationModal({
             </div>
           </div>
 
-          {/* ✅ Debug : afficher l'état */}
-          <div className="text-xs text-gray-400 border-t border-ms-border pt-2">
-            Debug: isOwner={String(isOwner)} | isPast={String(isPast)} | hasEdit={String(!!onEdit)}
-          </div>
+        
         </div>
 
         <div className="mt-6 flex flex-wrap gap-2 border-t border-ms-border pt-4">
