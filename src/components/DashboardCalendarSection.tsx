@@ -25,9 +25,12 @@ export default function DashboardCalendarSection({
         if (res.ok) {
           const data = await res.json();
           setUserEmail(data.email || '');
+          console.log("📧 Email utilisateur:", data.email);
+        } else {
+          console.error("❌ Erreur session:", res.status);
         }
       } catch (error) {
-        console.error('Erreur récupération session:', error);
+        console.error('❌ Erreur récupération session:', error);
       } finally {
         setLoading(false);
       }
@@ -85,10 +88,21 @@ export default function DashboardCalendarSection({
     }
   }
 
-  // ✅ Vérification sécurisée du propriétaire
+  // ✅ Vérification sécurisée du propriétaire avec logs
   const isOwner = selected && userEmail 
     ? selected.requesterEmail?.toLowerCase() === userEmail.toLowerCase()
     : false;
+
+  // ✅ Debug logs
+  if (selected) {
+    console.log("🔍 Réservation sélectionnée:", {
+      id: selected.id,
+      title: selected.title,
+      requesterEmail: selected.requesterEmail,
+      userEmail: userEmail,
+      isOwner: isOwner
+    });
+  }
 
   if (loading) {
     return <div className="text-center py-8">Chargement...</div>;

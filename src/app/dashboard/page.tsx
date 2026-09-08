@@ -8,7 +8,12 @@ import DashboardCalendarSection from "@/components/DashboardCalendarSection";
 
 export default async function DashboardPage() {
   const session = await getSession();
-  const email = session!.email;
+  if (!session) {
+    // Rediriger vers login
+    return null;
+  }
+  
+  const email = session.email;
 
   const reservations = await listReservations();
 
@@ -16,11 +21,14 @@ export default async function DashboardPage() {
     id: r.id,
     title: r.title,
     requesterName: r.requesterName,
-    requesterEmail: r.requesterEmail, // AJOUTER cette propriété
+    requesterEmail: r.requesterEmail,
     date: r.date.toISOString().slice(0, 10),
     startTime: r.startTime,
     endTime: r.endTime,
   }));
+
+  // Debug
+  console.log("📋 Réservations:", calendarData);
 
   const todayStr = new Date().toISOString().slice(0, 10);
   const todayCount = calendarData.filter((r) => r.date === todayStr).length;

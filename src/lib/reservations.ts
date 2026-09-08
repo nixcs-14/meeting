@@ -32,6 +32,15 @@ export function isPastDate(dateStr: string): boolean {
   return dateStr < todayStr;
 }
 
+// ✅ Vérifier si une date est passée par rapport à aujourd'hui
+export function isDatePast(date: Date): boolean {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const compareDate = new Date(date);
+  compareDate.setHours(0, 0, 0, 0);
+  return compareDate < today;
+}
+
 export type CreateReservationInput = {
   requesterEmail: string;
   requesterName: string;
@@ -86,7 +95,7 @@ async function hasTimeOverlapTx(
   return sameDay.some((r) => startTime < r.endTime && endTime > r.startTime);
 }
 
-// ✅ CRÉER UNE RÉSERVATION (avec vérification date passée)
+// ✅ CRÉER UNE RÉSERVATION
 export async function createReservation(input: CreateReservationInput) {
   const { requesterEmail, requesterName, title, date, startTime, endTime, participants } = input;
 
@@ -166,7 +175,7 @@ export type UpdateReservationInput = {
   endTime: string;
 };
 
-// ✅ MODIFIER UNE RÉSERVATION (avec vérification date passée)
+// ✅ MODIFIER UNE RÉSERVATION
 export async function updateReservation(input: UpdateReservationInput) {
   const { id, requesterEmail, title, startTime, endTime } = input;
 
@@ -176,7 +185,8 @@ export async function updateReservation(input: UpdateReservationInput) {
     throw new ReservationError("NOT_FOUND", "Réservation introuvable.");
   }
   
-  if (isPastDate(existing.date.toISOString().slice(0, 10))) {
+  // ❌ Vérification : date passée
+  if (isDatePast(existing.date)) {
     throw new ReservationError(
       "PAST_DATE",
       "Impossible de modifier une réservation passée."
@@ -223,7 +233,7 @@ export async function updateReservation(input: UpdateReservationInput) {
   return reservationData;
 }
 
-// ✅ SUPPRIMER UNE RÉSERVATION (avec vérification date passée)
+// ✅ SUPPRIMER UNE RÉSERVATION
 export async function deleteReservation(id: string, requesterEmail: string) {
   const existing = await prisma.reservation.findUnique({ where: { id } });
   if (!existing) return;
@@ -234,7 +244,8 @@ export async function deleteReservation(id: string, requesterEmail: string) {
     );
   }
 
-  if (isPastDate(existing.date.toISOString().slice(0, 10))) {
+  // ❌ Vérification : date passée
+  if (isDatePast(existing.date)) {
     throw new ReservationError(
       "PAST_DATE",
       "Impossible de supprimer une réservation passée."

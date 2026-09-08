@@ -22,12 +22,11 @@ export default function ReservationModal({
   onNegotiate,
   isOwner = false,
 }: ReservationModalProps) {
-  // ✅ Garde de type : si reservation est null, ne pas afficher
+  // ✅ Garde de type
   if (!reservation) {
     return null;
   }
 
-  // ✅ Maintenant TypeScript sait que reservation n'est pas null
   const { id, title, date, startTime, endTime, requesterName, requesterEmail } = reservation;
 
   function calculerDuree(start: string, end: string): string {
@@ -46,12 +45,17 @@ export default function ReservationModal({
     return `${heures}h${minutes}`;
   }
 
-  // ✅ Vérification sécurisée de la date
+  // ✅ Vérification de la date passée
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const reservationDate = new Date(date);
   reservationDate.setHours(0, 0, 0, 0);
   const isPast = reservationDate < today;
+
+  // ✅ Debug logs
+  console.log("📅 Date réservation:", date);
+  console.log("📅 Date aujourd'hui:", today.toISOString().slice(0, 10));
+  console.log("🔍 isPast:", isPast);
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -100,7 +104,9 @@ export default function ReservationModal({
                 day: "numeric",
               })}
               {isPast && (
-                <span className="ml-2 text-xs text-ms-red">(Passée)</span>
+                <span className="ml-2 inline-block rounded bg-ms-redBg px-2 py-0.5 text-xs text-ms-red">
+                  ⚠️ Passée
+                </span>
               )}
             </div>
           </div>
@@ -122,6 +128,11 @@ export default function ReservationModal({
               {calculerDuree(startTime, endTime)}
             </div>
           </div>
+
+          {/* ✅ Debug : afficher l'état */}
+          <div className="text-xs text-gray-400 border-t border-ms-border pt-2">
+            Debug: isOwner={String(isOwner)} | isPast={String(isPast)} | hasEdit={String(!!onEdit)}
+          </div>
         </div>
 
         <div className="mt-6 flex flex-wrap gap-2 border-t border-ms-border pt-4">
@@ -132,6 +143,7 @@ export default function ReservationModal({
             Fermer
           </button>
           
+          {/* ✅ BOUTONS POUR LE PROPRIÉTAIRE (réservations non passées) */}
           {isOwner && !isPast && (
             <>
               {onEdit && (
@@ -153,6 +165,7 @@ export default function ReservationModal({
             </>
           )}
 
+          {/* ✅ BOUTON POUR LES AUTRES (réservations non passées) */}
           {!isOwner && !isPast && onNegotiate && (
             <button
               onClick={onNegotiate}
@@ -162,9 +175,10 @@ export default function ReservationModal({
             </button>
           )}
 
+          {/* ✅ MESSAGE POUR LES RÉSERVATIONS PASSÉES */}
           {isPast && (
-            <p className="w-full text-center text-xs text-ms-muted">
-              ⚠️ Cette réservation est passée, vous ne pouvez plus la modifier.
+            <p className="w-full text-center text-sm text-ms-muted">
+              ⚠️ Cette réservation est passée
             </p>
           )}
         </div>
